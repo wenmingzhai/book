@@ -1,5 +1,5 @@
 # book
-公众号“文明宅的空间”/“文明宅”防失联。资源整合。\
+公众号“文明宅的空间”/“文明宅”防失联。资源整合。
 
 新公众号“文明宅2号”\
 ![qrcode_for_gh_f791a493b57a_258](https://github.com/user-attachments/assets/6bfa51b2-2866-4e2a-9e8f-b856635f0558)
