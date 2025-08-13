@@ -1,8 +1,9 @@
 # book
 公众号“文明宅的空间”/“文明宅”防失联。资源整合。\
-关键词请发给新的公众号“文明宅”。\
-![qrcode_for_gh_1a0dfe62e3e9_258](https://github.com/user-attachments/assets/62261e45-3022-45fc-a2ce-b1d01e69fd96)
 
-2025年8月11日，公众号“文明宅”也被封。我在考虑放弃公众号这个平台。
-<img width="1266" height="937" alt="image" src="https://github.com/user-attachments/assets/70afff27-7051-4344-b8dd-747df76c1322" />
+新公众号“文明宅2号”\
+![qrcode_for_gh_f791a493b57a_258](https://github.com/user-attachments/assets/6bfa51b2-2866-4e2a-9e8f-b856635f0558)
+
+关键词请发到https://chatbot.weixin.qq.com/webapp/NyI0coVMtz75g7SkVjXbXgp1DdbwmF?isFloat=false&robotName=%E6%96%87%E6%98%8E%E5%AE%85%E5%AE%85
+
 
