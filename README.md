@@ -2,7 +2,8 @@
 公众号“文明宅的空间”/“文明宅”防失联。资源整合。
 
 新公众号“文明宅的二号空间”\
-![文明宅的二号空间二维码](https://c.wenmingzhai.top/f/RKqud/qrcode_for_gh_0b6b9ebca3e8_258.jpg)
+![qrcode_for_gh_0b6b9ebca3e8_258](https://github.com/user-attachments/assets/35a9871a-7e83-4924-a61a-84370b00400c)
+
 
 关键词搜索工具
 | 工具序号 | 访问链接 | 适用说明 |
