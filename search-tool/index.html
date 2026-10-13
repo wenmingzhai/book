@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文明宅的空间搜索工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .search-shadow {
+                box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1);
+            }
+            .card-hover {
+                transition: all 0.3s ease;
+            }
+            .card-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 12px 20px -8px rgba(59, 130, 246, 0.2);
+            }
+            .highlight {
+                background-color: rgba(255, 251, 0, 0.3);
+                padding: 0 2px;
+                border-radius: 2px;
+            }
+            .link-text {
+                color: #3b82f6;
+                text-decoration: underline;
+            }
+            .link-text:hover {
+                color: #2563eb;
+                text-decoration: none;
+            }
+            .preserve-line-breaks {
+                white-space: pre-line;
+                word-break: break-all;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-link text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-gray-800">文明宅的空间搜索工具</h1>
+            </div>
+            <div class="text-sm text-gray-600">
+                <span id="data-count" class="flex items-center">
+                    <i class="fa fa-spinner fa-spin text-primary mr-2"></i>正在加载数据...
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <section class="mb-8">
+            <div class="relative max-w-2xl mx-auto">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    placeholder="输入关键词进行搜索..." 
+                    class="w-full py-3 px-5 pr-12 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none search-shadow transition-all"
+                    disabled
+                >
+                <button 
+                    id="search-btn" 
+                    class="absolute right-3 top-1/2 -translate-y-1/2 bg-gray-300 text-white p-2 rounded-lg transition-colors cursor-not-allowed"
+                    disabled
+                >
+                    <i class="fa fa-search"></i>
+                </button>
+            </div>
+            <p id="search-tip" class="text-center text-gray-500 mt-2 text-sm">正在加载数据，请稍候...</p>
+        </section>
+
+        <section id="results-section" class="hidden">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fa fa-search-results text-primary mr-2"></i>搜索结果
+                <span id="result-count" class="ml-2 text-sm bg-gray-100 text-gray-700 py-1 px-3 rounded-full"></span>
+            </h2>
+            <div id="results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            </div>
+            <div id="no-results" class="hidden text-center py-12">
+                <i class="fa fa-search-minus text-5xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">未找到匹配的关键词，请尝试其他关键词</p>
+            </div>
+        </section>
+
+        <section id="load-error" class="hidden text-center py-8">
+            <i class="fa fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
+            <p class="text-red-600 font-medium mb-2">数据加载失败</p>
+            <p class="text-gray-500" id="error-detail"></p>
+            <button id="reload-btn" class="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                <i class="fa fa-refresh mr-2"></i>重新加载
+            </button>
+        </section>
+    </main>
+
+    <footer class="mt-auto bg-white border-t border-gray-200 py-6">
+        <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
+            <p>文明宅的空间搜索工具 &copy; 2025</p>
+        </div>
+    </footer>
+
+    <script>
+        let excelData = [];
+        const EXCEL_FILE_PATH = 'data.xlsx';
+
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        const resultsSection = document.getElementById('results-section');
+        const resultsContainer = document.getElementById('results-container');
+        const resultCount = document.getElementById('result-count');
+        const noResults = document.getElementById('no-results');
+        const dataCount = document.getElementById('data-count');
+        const searchTip = document.getElementById('search-tip');
+        const loadError = document.getElementById('load-error');
+        const errorDetail = document.getElementById('error-detail');
+        const reloadBtn = document.getElementById('reload-btn');
+
+        // 验证是否为完整链接（支持 ? & = #）
+        function isValidUrl(str) {
+            if (!str) return false;
+            const s = str.trim();
+            return /^https?:\/\/.+/i.test(s);
+        }
+
+        // 链接自动识别（终极版：完整识别带?pwd=的链接）
+        function textToClickableLinks(text) {
+            if (!text) return '';
+            const t = text.toString();
+            const reg = /(https?:\/\/\S+)/gi;
+            return t.replace(reg, (url) => {
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="link-text break-all">${url}</a>`;
+            });
+        }
+
+        // 关键词高亮
+        function highlightKeyword(text, keyword) {
+            if (!text || !keyword) return text;
+            const lt = text.toLowerCase();
+            const lk = keyword.toLowerCase();
+            if (!lt.includes(lk)) return text;
+            return text.replace(new RegExp(`(${keyword})`, 'gi'), '<span class="highlight">$1</span>');
+        }
+
+        // 加载Excel
+        async function loadExcelData() {
+            try {
+                dataCount.innerHTML = `<i class="fa fa-spinner fa-spin text-primary mr-2"></i>正在加载数据...`;
+                searchTip.textContent = '正在加载数据，请稍候...';
+                loadError.classList.add('hidden');
+                searchInput.disabled = true;
+                searchBtn.disabled = true;
+
+                const res = await fetch(EXCEL_FILE_PATH);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                
+                const buf = await res.arrayBuffer();
+                const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(ws, { raw: false, cellText: true });
+
+                if (!jsonData.length) throw new Error('Excel无数据');
+                if (!('关键词' in jsonData[0]) || !('内容' in jsonData[0])) throw new Error('缺少 关键词/内容 列');
+
+                excelData = jsonData;
+                dataCount.innerHTML = `<i class="fa fa-check text-green-500 mr-2"></i>已加载 ${excelData.length} 条数据`;
+                searchTip.textContent = `已加载 ${excelData.length} 条数据，可搜索`;
+                searchTip.className = 'text-center text-green-600 mt-2 text-sm';
+                
+                searchInput.disabled = false;
+                searchBtn.disabled = false;
+                searchBtn.className = 'absolute right-3 top-1/2 -translate-y-1/2 bg-primary hover:bg-primary/90 text-white p-2 rounded-lg transition-colors';
+                searchInput.focus();
+            } catch (e) {
+                console.error(e);
+                dataCount.innerHTML = `<i class="fa fa-exclamation-circle text-red-500 mr-2"></i>加载失败`;
+                searchTip.textContent = '加载失败，请检查 data.xlsx';
+                searchTip.className = 'text-center text-red-600 mt-2 text-sm';
+                errorDetail.textContent = e.message;
+                loadError.classList.remove('hidden');
+            }
+        }
+
+        // 搜索功能
+        function performSearch() {
+            const kw = searchInput.value.trim();
+            if (!kw) { alert('请输入关键词'); searchInput.focus(); return; }
+
+            resultsContainer.innerHTML = '';
+            resultsSection.classList.remove('hidden');
+            noResults.classList.add('hidden');
+
+            const lkw = kw.toLowerCase();
+            const matched = excelData.filter(item => {
+                return (item.关键词 || '').toLowerCase().includes(lkw) || (item.内容 || '').toLowerCase().includes(lkw);
+            });
+
+            resultCount.textContent = `${matched.length} 条结果`;
+            if (!matched.length) { noResults.classList.remove('hidden'); return; }
+
+            matched.forEach((item, i) => {
+                const title = item.关键词 || '无标题';
+                const content = item.内容 || '';
+                const remark = item.备注 || '';
+                const isUrl = isValidUrl(content);
+
+                let hTitle = highlightKeyword(title, kw);
+                let hContent = textToClickableLinks(content);
+
+                if (!isUrl) {
+                    hContent = hContent.replace(/(<a[\s\S]*?<\/a>)/gi, '|#|$1|#|').split('|#|').map(part => {
+                        return part.startsWith('<a') ? part : highlightKeyword(part, kw);
+                    }).join('');
+                }
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg p-4 card-hover border border-gray-100';
+                card.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <span class="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">${i+1}</span>
+                    ${isUrl ? `<a href="${content}" target="_blank" class="text-gray-400 hover:text-primary"><i class="fa fa-external-link"></i></a>` : ''}
+                </div>
+                <div class="mb-2">
+                    <span class="text-xs text-gray-500">关键词：</span>
+                    <span class="font-medium">${hTitle}</span>
+                </div>
+                <div class="mb-2">
+                    <span class="text-xs text-gray-500">内容：</span>
+                    <div class="text-sm text-gray-700 mt-1 preserve-line-breaks">${hContent}</div>
+                </div>
+                ${remark ? `<div class="text-xs text-gray-500 preserve-line-breaks"><span>备注：</span>${remark}</div>` : ''}
+                ${isUrl ? `<a href="${content}" target="_blank" class="mt-2 inline-flex items-center text-sm bg-primary/5 text-primary px-3 py-1 rounded-lg hover:bg-primary/10">
+                    <i class="fa fa-link mr-1"></i>打开链接
+                </a>` : ''}
+                `;
+                resultsContainer.appendChild(card);
+            });
+
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 【修复】搜索框事件（数字、字母、符号全部可以输入）
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+        reloadBtn.addEventListener('click', loadExcelData);
+        window.addEventListener('DOMContentLoaded', loadExcelData);
+    </script>
+</body>
+</html>
